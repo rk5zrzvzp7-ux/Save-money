@@ -280,6 +280,22 @@ button:active {
 .stock-stats div { display: flex; flex-direction: column; gap: 4px; }
 .stock-stats b { font-size: 15px; margin-top: 2px; }
 
+/* 結算看板專屬 (三分格) */
+.summary-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    background: var(--input-bg);
+    padding: 12px;
+    border-radius: 14px;
+    margin-bottom: 14px;
+    font-size: 11px;
+    text-align: center;
+    border: 1px dashed var(--border-color);
+}
+.summary-stats div { display: flex; flex-direction: column; gap: 4px; color: var(--text-secondary); }
+.summary-stats b { font-size: 14px; margin-top: 2px; }
+
 /* 清單 */
 .list {
     list-style: none;
@@ -333,6 +349,9 @@ button:active {
 }
 .badge-margin { background: rgba(217, 166, 160, 0.25); color: #C98D86; }
 .badge-cash { background: rgba(169, 185, 156, 0.25); color: #7E9C72; }
+
+/* 分類標籤專用 */
+.cat-tag { background: rgba(201, 169, 130, 0.15); color: var(--text-color); border: 1px solid var(--border-color); margin-right: 6px; }
 
 /* 彈跳視窗 */
 .modal-overlay {
@@ -432,21 +451,33 @@ button:active {
         <ul class="list" id="accountList"></ul>
     </div>
 
-    <!-- 一般收支 / 存提款 -->
+    <!-- 💰 收支 / 本月結算 (新增分類與結算) -->
     <div class="section">
         <h3>💰 一般收支 / 存提款</h3>
+        
+        <!-- 本月結算小看板 -->
+        <div class="summary-stats">
+            <div><span>本月收入</span><b class="text-plus" id="monthIncome">$0</b></div>
+            <div><span>本月支出</span><b class="text-minus" id="monthExpense">$0</b></div>
+            <div><span>本月結餘</span><b id="monthBalance">$0</b></div>
+        </div>
+
         <div class="form-row">
             <select id="accSelect">
                 <option value="">請先新增帳戶</option>
             </select>
-            <select id="txType">
+            <!-- 聯動：切換存提款時自動更新右邊的分類選項 -->
+            <select id="txType" onchange="updateCategoryOptions('txCategory', 'txType')">
                 <option value="deposit">存入 (+)</option>
-                <option value="withdraw">提領 (-)</option>
+                <option value="withdraw" selected>提領 (-)</option>
             </select>
         </div>
         <div class="form-row">
-            <input type="text" id="txNote" placeholder="備註（例如：薪水、買午餐）">
+            <select id="txCategory"></select>
             <input type="number" id="txAmount" placeholder="金額" min="1">
+        </div>
+        <div class="form-row">
+            <input type="text" id="txNote" placeholder="選填備註 (例如: 麥當勞)">
         </div>
         <button class="btn-green" style="width:100%; margin-bottom: 12px;" onclick="handleTransaction()">記一筆</button>
         
@@ -458,7 +489,7 @@ button:active {
     <div class="section">
         <h3><span>📊 股票庫存管理</span> <button onclick="openHoldingModal()" style="font-size:11px; padding:6px 10px; width:auto;" class="btn-blue">+ 新增持股</button></h3>
         <div class="stock-stats" style="grid-template-columns: 1fr;">
-            <div><span>未實現庫存</span><b id="holdingTotalCost">$0</b></div>
+            <div><span>未實現庫存 (總投入成本)</span><b id="holdingTotalCost">$0</b></div>
         </div>
         <ul class="list" id="holdingList"></ul>
     </div>
@@ -483,7 +514,13 @@ button:active {
         <ul class="list" id="stockList" style="margin-top: 10px;"></ul>
     </div>
 
-    <!-- 清除重置按鈕 -->
+    <!-- 備份與清空重置 -->
+    <div style="display: flex; gap: 10px; margin-bottom: 15px; margin-top: 5px;">
+        <button class="btn-blue" style="background: transparent; color: var(--text-color); border: 1px solid var(--sage); flex: 1;" onclick="exportData()">📥 備份下載</button>
+        <button class="btn-blue" style="background: transparent; color: var(--text-color); border: 1px solid var(--accent); flex: 1;" onclick="document.getElementById('importFile').click()">📤 匯入還原</button>
+
+        <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importData(event)">
+    </div>
     <div>
         <button class="btn-reset" onclick="resetAllData()">🗑️ 清空所有資料並重置</button>
     </div>
@@ -551,11 +588,12 @@ button:active {
     <div class="modal-box">
         <h3>編輯收支紀錄</h3>
         <input type="hidden" id="editTxId">
-        <select id="editTxType">
+        <select id="editTxType" onchange="updateCategoryOptions('editTxCategory', 'editTxType')">
             <option value="deposit">存入 (+)</option>
             <option value="withdraw">提領 (-)</option>
         </select>
-        <input type="text" id="editTxNote" placeholder="備註">
+        <select id="editTxCategory" style="margin-bottom: 10px;"></select>
+        <input type="text" id="editTxNote" placeholder="選填備註" style="margin-bottom: 10px;">
         <input type="number" id="editTxAmount" placeholder="金額">
         <div class="modal-btns">
             <button class="btn-red" style="flex:1;" onclick="closeModal('txEditModal')">取消</button>
@@ -601,6 +639,42 @@ button:active {
     if (!appData.transactions) appData.transactions = [];
     if (!appData.holdings) appData.holdings = [];
 
+    // --- 備份與還原功能 ---
+    function exportData() {
+        let dataStr = JSON.stringify(appData);
+        let blob = new Blob([dataStr], { type: "application/json" });
+        let url = URL.createObjectURL(blob);
+        let a = document.createElement('a');
+        a.href = url;
+        let d = new Date();
+        a.download = `財務小幫手備份_${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function importData(event) {
+        let file = event.target.files[0];
+        if(!file) return;
+        let reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                let parsed = JSON.parse(e.target.result);
+                // 簡單驗證檔案結構
+                if(parsed && parsed.accounts !== undefined && parsed.transactions !== undefined) {
+                    appData = parsed;
+                    saveData();
+                    alert("✅ 資料匯入成功！");
+                } else {
+                    alert("⚠️ 檔案格式不正確，無法匯入！");
+                }
+            } catch(err) {
+                alert("⚠️ 讀取檔案失敗！");
+            }
+            event.target.value = ''; // 讓同一個檔案可以重複選取
+        };
+        reader.readAsText(file);
+    }
+
     function saveData() {
         localStorage.setItem('finance_app_data', JSON.stringify(appData));
         renderUI();
@@ -616,6 +690,26 @@ button:active {
 
     function closeModal(modalId) {
         document.getElementById(modalId).style.display = 'none';
+    }
+
+    // --- 收支分類邏輯 ---
+    const categories = {
+        deposit: ['💼 薪水', '📈 投資獲利', '🧧 獎金', '💵 其他收入'],
+        withdraw: ['🍜 飲食', '🚗 交通', '🛍️ 購物', '🏠 生活', '🎉 娛樂', '🏥 醫療', '🐱 寵物', '💸 其他支出']
+    };
+
+    function updateCategoryOptions(selectId = 'txCategory', typeId = 'txType', defaultVal = '') {
+        const type = document.getElementById(typeId).value;
+        const catSelect = document.getElementById(selectId);
+        if (!catSelect) return;
+        catSelect.innerHTML = '';
+        categories[type].forEach(cat => {
+            let opt = document.createElement('option');
+            opt.value = cat;
+            opt.innerText = cat;
+            if (cat === defaultVal) opt.selected = true;
+            catSelect.appendChild(opt);
+        });
     }
 
     // --- 目標金額 ---
@@ -682,7 +776,7 @@ button:active {
         }
     }
 
-    // --- 📊 股票庫存管理 (手動成本主導) ---
+    // --- 📊 股票庫存管理 ---
     function setHoldingType(type) {
         document.getElementById('holdingType').value = type;
         if (type === 'spot') {
@@ -767,8 +861,11 @@ button:active {
         
         document.getElementById('editTxId').value = tx.id;
         document.getElementById('editTxType').value = tx.type;
-        document.getElementById('editTxNote').value = tx.note;
+        document.getElementById('editTxNote').value = tx.note || '';
         document.getElementById('editTxAmount').value = tx.amount;
+        
+        // 載入該筆紀錄的分類
+        updateCategoryOptions('editTxCategory', 'editTxType', tx.category);
         
         document.getElementById('txEditModal').style.display = 'flex';
     }
@@ -776,7 +873,8 @@ button:active {
     function saveEditedTransaction() {
         let txId = document.getElementById('editTxId').value;
         let newType = document.getElementById('editTxType').value;
-        let newNote = document.getElementById('editTxNote').value.trim() || (newType === 'deposit' ? '存入' : '提領');
+        let newCategory = document.getElementById('editTxCategory').value;
+        let newNote = document.getElementById('editTxNote').value.trim();
         let newAmount = parseFloat(document.getElementById('editTxAmount').value);
 
         if (isNaN(newAmount) || newAmount <= 0) { alert('請輸入有效金額！'); return; }
@@ -794,6 +892,7 @@ button:active {
         }
 
         tx.type = newType;
+        tx.category = newCategory;
         tx.note = newNote;
         tx.amount = newAmount;
 
@@ -875,12 +974,11 @@ button:active {
 
     // --- UI 渲染 ---
     function renderUI() {
+        // 總資產計算
         let totalCash = appData.accounts.reduce((sum, acc) => sum + acc.balance, 0);
-
-        // 直接加總手動輸入的 customCost
         let totalHoldingCost = appData.holdings.reduce((sum, h) => sum + (h.customCost || 0), 0);
-
         let totalAsset = totalCash + totalHoldingCost;
+        
         document.getElementById('totalBalance').innerText = `$${Math.round(totalAsset).toLocaleString()}`;
         document.getElementById('balanceDetailTip').innerText = `現金: $${Math.round(totalCash).toLocaleString()} | 股票: $${Math.round(totalHoldingCost).toLocaleString()}`;
 
@@ -966,21 +1064,40 @@ button:active {
             });
         }
 
-        // 收支明細
+        // 💰 收支明細與本月結算
         const txHistoryList = document.getElementById('txHistoryList');
         txHistoryList.innerHTML = '';
+        
+        // 本月結算邏輯
+        let currentMonthStr = (new Date().getMonth() + 1) + '/';
+        let monthIn = 0;
+        let monthOut = 0;
+
         if (appData.transactions.length === 0) {
             txHistoryList.innerHTML = '<p class="empty-tip">尚無收支明細</p>';
         } else {
             appData.transactions.slice().reverse().forEach(tx => {
+                // 檢查是否為本月紀錄
+                if (tx.date.startsWith(currentMonthStr)) {
+                    if (tx.type === 'deposit') monthIn += tx.amount;
+                    else monthOut += tx.amount;
+                }
+
                 const accObj = appData.accounts.find(a => a.id === tx.accId);
                 const accName = accObj ? accObj.name : '未知帳戶';
                 const isDeposit = tx.type === 'deposit';
+                
+                // 分類與備註顯示邏輯
+                let displayCat = tx.category ? `<span class="badge badge-cash cat-tag">${tx.category}</span>` : '';
+                let displayNote = tx.note ? tx.note : '';
+                // 若兩者都沒有，給個預設文字
+                if(!tx.category && !tx.note) displayNote = isDeposit ? '存入' : '提領';
+
                 const li = document.createElement('li');
                 li.className = 'list-item';
                 li.innerHTML = `
                     <div>
-                        <div><b>${tx.note}</b></div>
+                        <div style="font-size: 14px; font-weight: 700; margin-bottom: 2px;">${displayCat}${displayNote}</div>
                         <div class="link-text">${accName} | ${tx.date}</div>
                     </div>
                     <div class="item-actions">
@@ -992,6 +1109,14 @@ button:active {
                 txHistoryList.appendChild(li);
             });
         }
+        
+        // 渲染本月結算數字
+        let monthBal = monthIn - monthOut;
+        document.getElementById('monthIncome').innerText = `+$${monthIn.toLocaleString()}`;
+        document.getElementById('monthExpense').innerText = `-$${monthOut.toLocaleString()}`;
+        let balEl = document.getElementById('monthBalance');
+        balEl.innerText = `${monthBal >= 0 ? '+' : ''}$${monthBal.toLocaleString()}`;
+        balEl.className = monthBal >= 0 ? 'text-plus' : 'text-minus';
 
         // 已實現股票紀錄
         let stockTotalPnl = appData.stocks.reduce((sum, st) => sum + st.pnl, 0);
@@ -1037,7 +1162,8 @@ button:active {
         if (!accId) { alert('請先選擇或新增帳戶！'); return; }
         
         let type = document.getElementById('txType').value;
-        let note = document.getElementById('txNote').value.trim() || (type === 'deposit' ? '存入' : '提領');
+        let category = document.getElementById('txCategory').value;
+        let note = document.getElementById('txNote').value.trim();
         let amount = parseFloat(document.getElementById('txAmount').value);
 
         if (isNaN(amount) || amount <= 0) { alert('請輸入有效金額！'); return; }
@@ -1054,6 +1180,7 @@ button:active {
             id: Date.now().toString(),
             accId: accId,
             type: type,
+            category: category,
             note: note,
             amount: amount,
             date: dateStr
@@ -1092,6 +1219,8 @@ button:active {
         saveData();
     }
 
+    // 初始化下拉選單
+    updateCategoryOptions();
     renderUI();
 </script>
 
