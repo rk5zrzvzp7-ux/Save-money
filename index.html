@@ -12,7 +12,6 @@
     <meta name="apple-mobile-web-app-title" content="財務小幫手">
     
     <style>
-       
 :root {
     --bg-color: #F8F4EC;
     --card-bg: #FFFDF8;
@@ -120,8 +119,14 @@ h2 {
 .total-amount {
     font-size: 36px;
     font-weight: 800;
-    margin: 10px 0;
+    margin: 8px 0 4px;
     letter-spacing: -1px;
+}
+
+.sub-balance-tip {
+    font-size: 11px;
+    opacity: 0.9;
+    margin-bottom: 6px;
 }
 
 .target-info {
@@ -131,7 +136,7 @@ h2 {
     align-items: center;
     flex-wrap: wrap;
     gap: 6px;
-    margin-top: 14px;
+    margin-top: 12px;
     border-top: 1px solid rgba(255,255,255,0.35);
     padding-top: 12px;
 }
@@ -252,7 +257,7 @@ button:active {
     background: var(--accent-dark);
 }
 
-/* 股票統計 */
+/* 股票統計看板 */
 .stock-stats {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -272,7 +277,7 @@ button:active {
 }
 
 .stock-stats b {
-    font-size: 17px;
+    font-size: 15px;
     margin-top: 2px;
 }
 
@@ -367,7 +372,7 @@ button:active {
     box-shadow: 0 15px 35px rgba(0,0,0,0.15);
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 12px;
 }
 
 .modal-box h3 {
@@ -379,6 +384,7 @@ button:active {
 .modal-btns {
     display: flex;
     gap: 10px;
+    margin-top: 4px;
 }
 
 /* 重置按鈕 */
@@ -440,8 +446,6 @@ button:active {
         font-size: 13px;
     }
 }
-
-
     </style>
 </head>
 <body>
@@ -456,6 +460,7 @@ button:active {
     <div class="dashboard-card">
         <div style="font-size: 13px; opacity: 0.9;">總淨資產</div>
         <div class="total-amount" id="totalBalance">$0</div>
+        <div class="sub-balance-tip" id="balanceDetailTip">現金: $0 | 股票: $0</div>
         
         <div class="target-info">
             <span id="targetText">目標：$100,000</span>
@@ -496,11 +501,20 @@ button:active {
         <ul class="list" id="txHistoryList"></ul>
     </div>
 
-    <!-- 股票交易損益記錄 -->
+	<!-- 📊 股票庫存管理  -->
     <div class="section">
-        <h3>📈 股票交易損益記錄</h3>
+        <h3><span>📊 股票庫存管理</span> <button onclick="openHoldingModal()" style="font-size:11px; padding:6px 10px; width:auto;" class="btn-blue">+ 新增持股</button></h3>
+        <div class="stock-stats" style="grid-template-columns: 1fr;">
+            <div><span>持股總成本</span><b id="holdingTotalCost">$0</b></div>
+        </div>
+        <ul class="list" id="holdingList"></ul>
+    </div>
+	
+    <!-- 股票歷史交易損益記錄 -->
+    <div class="section">
+        <h3>📈 已實現股票交易紀錄</h3>
         <div class="stock-stats">
-            <div><span>累積股票總損益</span><b id="stockTotalPnl">$0</b></div>
+            <div><span>已實現總損益</span><b id="stockTotalPnl">$0</b></div>
             <div><span>勝率 (獲利/總筆數)</span><b id="stockWinRate">0% (0/0)</b></div>
         </div>
         <div class="form-row">
@@ -520,12 +534,9 @@ button:active {
     <div>
         <button class="btn-reset" onclick="resetAllData()">🗑️ 清空所有資料並重置</button>
     </div>
+    
     <!-- 頁尾署名 -->
     <div class="footer-credit">DESIGN BY VIVIAN</div>
-
-</div> 
-
-
 </div>
 
 <!-- 1. 設定目標金額彈窗 -->
@@ -554,7 +565,22 @@ button:active {
     </div>
 </div>
 
-<!-- 3. 編輯收支紀錄彈窗 -->
+<!-- 3. 新增/編輯股票庫存彈窗 -->
+<div class="modal-overlay" id="holdingModal">
+    <div class="modal-box">
+        <h3 id="holdingModalTitle">新增持股庫存</h3>
+        <input type="hidden" id="editHoldingId">
+        <input type="text" id="holdingName" placeholder="股票名稱/代號 (例: 台積電 2330)">
+        <input type="number" id="holdingShares" placeholder="持有股數 (例: 1000)">
+        <input type="number" id="holdingBuyPrice" placeholder="買入成本 (例: 950)">
+        <div class="modal-btns">
+            <button class="btn-red" style="flex:1;" onclick="closeModal('holdingModal')">取消</button>
+            <button class="btn-green" style="flex:1;" onclick="saveHolding()">儲存持股</button>
+        </div>
+    </div>
+</div>
+
+<!-- 4. 編輯收支紀錄彈窗 -->
 <div class="modal-overlay" id="txEditModal">
     <div class="modal-box">
         <h3>編輯收支紀錄</h3>
@@ -572,7 +598,7 @@ button:active {
     </div>
 </div>
 
-<!-- 4. 編輯股票交易紀錄彈窗 -->
+<!-- 5. 編輯已實現股票紀錄彈窗 -->
 <div class="modal-overlay" id="stockEditModal">
     <div class="modal-box">
         <h3>編輯股票交易紀錄</h3>
@@ -601,12 +627,14 @@ button:active {
     let defaultData = {
         targetGoal: 100000,
         accounts: [],
+        holdings: [],
         transactions: [],
         stocks: []
     };
 
     let appData = JSON.parse(localStorage.getItem('finance_app_data')) || defaultData;
     if (!appData.transactions) appData.transactions = [];
+    if (!appData.holdings) appData.holdings = [];
 
     function saveData() {
         localStorage.setItem('finance_app_data', JSON.stringify(appData));
@@ -614,7 +642,7 @@ button:active {
     }
 
     function resetAllData() {
-        if (confirm("確定要清空所有帳戶、交易與股票紀錄嗎？這將無法復原。")) {
+        if (confirm("確定要清空所有帳戶、庫存、交易與股票紀錄嗎？這將無法復原。")) {
             localStorage.removeItem('finance_app_data');
             appData = JSON.parse(JSON.stringify(defaultData));
             renderUI();
@@ -689,6 +717,63 @@ button:active {
         }
     }
 
+    // --- 📊 股票庫存管理 ---
+    function openHoldingModal(hId = null) {
+        if (hId) {
+            let h = appData.holdings.find(item => item.id === hId);
+            if (!h) return;
+            document.getElementById('holdingModalTitle').innerText = '編輯持股庫存';
+            document.getElementById('editHoldingId').value = h.id;
+            document.getElementById('holdingName').value = h.name;
+            document.getElementById('holdingShares').value = h.shares;
+            document.getElementById('holdingBuyPrice').value = h.buyPrice;
+        } else {
+            document.getElementById('holdingModalTitle').innerText = '新增持股庫存';
+            document.getElementById('editHoldingId').value = '';
+            document.getElementById('holdingName').value = '';
+            document.getElementById('holdingShares').value = '';
+            document.getElementById('holdingBuyPrice').value = '';
+        }
+        document.getElementById('holdingModal').style.display = 'flex';
+    }
+
+    function saveHolding() {
+        let editId = document.getElementById('editHoldingId').value;
+        let name = document.getElementById('holdingName').value.trim();
+        let shares = parseFloat(document.getElementById('holdingShares').value);
+        let buyPrice = parseFloat(document.getElementById('holdingBuyPrice').value);
+
+        if (!name || isNaN(shares) || isNaN(buyPrice)) {
+            alert('請填寫完整資訊與正確金額！'); return;
+        }
+
+        if (editId) {
+            let h = appData.holdings.find(item => item.id === editId);
+            if (h) {
+                h.name = name;
+                h.shares = shares;
+                h.buyPrice = buyPrice;
+            }
+        } else {
+            appData.holdings.push({
+                id: Date.now().toString(),
+                name: name,
+                shares: shares,
+                buyPrice: buyPrice
+            });
+        }
+
+        closeModal('holdingModal');
+        saveData();
+    }
+
+    function deleteHolding(hId) {
+        if (confirm("確定要刪除這筆庫存紀錄嗎？")) {
+            appData.holdings = appData.holdings.filter(h => h.id !== hId);
+            saveData();
+        }
+    }
+
     // --- 收支紀錄 ---
     function openTxEditModal(txId) {
         let tx = appData.transactions.find(t => t.id === txId);
@@ -744,7 +829,7 @@ button:active {
         saveData();
     }
 
-    // --- 股票紀錄 ---
+    // --- 已實現股票紀錄 ---
     function openStockEditModal(stId) {
         let st = appData.stocks.find(s => s.id === stId);
         if (!st) return;
@@ -804,9 +889,15 @@ button:active {
 
     // --- UI 渲染 ---
     function renderUI() {
-        let totalAsset = appData.accounts.reduce((sum, acc) => sum + acc.balance, 0);
-        document.getElementById('totalBalance').innerText = `$${totalAsset.toLocaleString()}`;
+        // 1. 計算現金與庫存總成本
+        let totalCash = appData.accounts.reduce((sum, acc) => sum + acc.balance, 0);
+        let totalHoldingCost = appData.holdings.reduce((sum, h) => sum + (h.shares * h.buyPrice), 0);
 
+        let totalAsset = totalCash + totalHoldingCost;
+        document.getElementById('totalBalance').innerText = `$${Math.round(totalAsset).toLocaleString()}`;
+        document.getElementById('balanceDetailTip').innerText = `現金: $${Math.round(totalCash).toLocaleString()} | 股票: $${Math.round(totalHoldingCost).toLocaleString()}`;
+
+        // 目標進度
         let goal = appData.targetGoal || 100000;
         let diff = goal - totalAsset;
         let percent = Math.min(Math.max((totalAsset / goal) * 100, 0), 100);
@@ -815,6 +906,7 @@ button:active {
         document.getElementById('diffText').innerText = diff > 0 ? `還差：$${diff.toLocaleString()}` : `已達成目標！🎉`;
         document.getElementById('progressBar').style.width = `${percent}%`;
 
+        // 2. 銀行帳戶列表
         const accList = document.getElementById('accountList');
         const accSelect = document.getElementById('accSelect');
         const stockAccSelect = document.getElementById('stockAccSelect');
@@ -853,6 +945,34 @@ button:active {
             });
         }
 
+        // 3. 📊 渲染股票庫存列表與總成本
+        document.getElementById('holdingTotalCost').innerText = `$${Math.round(totalHoldingCost).toLocaleString()}`;
+
+        const holdingList = document.getElementById('holdingList');
+        holdingList.innerHTML = '';
+        if (appData.holdings.length === 0) {
+            holdingList.innerHTML = '<p class="empty-tip">尚無持股庫存，請點擊「+ 新增持股」</p>';
+        } else {
+            appData.holdings.forEach(h => {
+                let cost = h.shares * h.buyPrice;
+
+                const li = document.createElement('li');
+                li.className = 'list-item';
+                li.innerHTML = `
+                    <div>
+                        <div><b>${h.name}</b> <span style="font-size:12px; opacity:0.8;">(${h.shares.toLocaleString()}股)</span></div>
+                        <div class="link-text">買入成本: $${h.buyPrice} | 總計: $${Math.round(cost).toLocaleString()}</div>
+                    </div>
+                    <div class="item-actions">
+                        <button class="icon-btn" onclick="openHoldingModal('${h.id}')" title="編輯持股">✏️</button>
+                        <button class="icon-btn" onclick="deleteHolding('${h.id}')" title="刪除庫存">🗑️</button>
+                    </div>
+                `;
+                holdingList.appendChild(li);
+            });
+        }
+
+        // 4. 收支明細列表
         const txHistoryList = document.getElementById('txHistoryList');
         txHistoryList.innerHTML = '';
         if (appData.transactions.length === 0) {
@@ -879,14 +999,15 @@ button:active {
             });
         }
 
+        // 5. 已實現股票歷史交易
         let stockTotalPnl = appData.stocks.reduce((sum, st) => sum + st.pnl, 0);
         let totalTrades = appData.stocks.length;
         let winTrades = appData.stocks.filter(st => st.pnl > 0).length;
         let winRate = totalTrades > 0 ? Math.round((winTrades / totalTrades) * 100) : 0;
 
-        let pnlEl = document.getElementById('stockTotalPnl');
-        pnlEl.innerText = `${stockTotalPnl >= 0 ? '+' : ''}$${stockTotalPnl.toLocaleString()}`;
-        pnlEl.className = stockTotalPnl >= 0 ? 'text-plus' : 'text-minus';
+        let historicalPnlEl = document.getElementById('stockTotalPnl');
+        historicalPnlEl.innerText = `${stockTotalPnl >= 0 ? '+' : ''}$${stockTotalPnl.toLocaleString()}`;
+        historicalPnlEl.className = stockTotalPnl >= 0 ? 'text-plus' : 'text-minus';
 
         document.getElementById('stockWinRate').innerText = `${winRate}% (${winTrades}/${totalTrades})`;
 
