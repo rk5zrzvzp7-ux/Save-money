@@ -11,65 +11,94 @@
     <meta name="apple-mobile-web-app-title" content="財務小幫手">
     
     <style>
-        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
-        body { background-color: #f4f6f8; margin: 0; padding: 16px; display: flex; justify-content: center; min-height: 100vh; }
-        .container { background: #fff; width: 100%; max-width: 500px; border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); display: flex; flex-direction: column; gap: 20px; }
-        h2, h3 { margin: 0; color: #222; }
+        :root {
+            --bg-color: #f4f6f8;
+            --card-bg: #ffffff;
+            --text-color: #222222;
+            --text-secondary: #666666;
+            --border-color: #eeeeee;
+            --input-bg: #f9f9f9;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --text-color: #f1f1f1;
+            --text-secondary: #a0a0a0;
+            --border-color: #2c2c2c;
+            --input-bg: #2a2a2a;
+        }
+
+        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; transition: background-color 0.3s, color 0.3s; }
+
+        body { background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 16px; display: flex; justify-content: center; min-height: 100vh; }
         
+        .container { background: var(--card-bg); width: 100%; max-width: 500px; border-radius: 20px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.06); display: flex; flex-direction: column; gap: 20px; }
+
+        .header-row { display: flex; justify-content: space-between; align-items: center; }
+        h2 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+
+        /* 主題切換按鈕 */
+        .theme-btn { background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; font-weight: 600; }
+
         /* 總資產與目標卡片 */
-        .dashboard-card { background: linear-gradient(135deg, #4facfe, #00f2fe); color: white; border-radius: 14px; padding: 20px; text-align: center; box-shadow: 0 4px 12px rgba(79, 172, 254, 0.3); position: relative; }
-        .total-amount { font-size: 34px; font-weight: 700; margin: 6px 0; }
-        
-        .target-info { font-size: 13px; opacity: 0.95; display: flex; justify-content: space-between; align-items: center; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.3); padding-top: 8px; }
-        .btn-edit-target { background: rgba(255,255,255,0.25); border: 1px solid #fff; color: white; padding: 4px 8px; border-radius: 6px; font-size: 11px; cursor: pointer; }
-        
-        .progress-bar-container { background: rgba(255,255,255,0.3); border-radius: 6px; height: 8px; width: 100%; margin-top: 8px; overflow: hidden; }
-        .progress-bar { background: #fff; height: 100%; width: 0%; transition: width 0.4s; }
+        .dashboard-card { background: linear-gradient(135deg, #3b82f6, #10b981); color: white; border-radius: 16px; padding: 22px; text-align: center; box-shadow: 0 8px 20px rgba(16, 185, 129, 0.2); position: relative; }
+        .total-amount { font-size: 36px; font-weight: 800; margin: 8px 0; letter-spacing: -1px; }
+
+        .target-info { font-size: 13px; opacity: 0.95; display: flex; justify-content: space-between; align-items: center; margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.25); padding-top: 10px; }
+        .btn-edit-target { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 4px 10px; border-radius: 8px; font-size: 11px; cursor: pointer; font-weight: 600; }
+
+        .progress-bar-container { background: rgba(255,255,255,0.3); border-radius: 6px; height: 8px; width: 100%; margin-top: 10px; overflow: hidden; }
+        .progress-bar { background: #fff; height: 100%; width: 0%; transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
 
         /* 區塊容器 */
-        .section { background: #fafafa; border-radius: 12px; padding: 14px; border: 1px solid #eee; }
-        .section h3 { font-size: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-        
-        /* 表單與按鈕 */
-        .form-row { display: flex; gap: 8px; margin-bottom: 8px; }
-        input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; background: #fff; outline: none; }
-        input:focus, select:focus { border-color: #4facfe; }
-        button { padding: 10px 16px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; color: white; }
-        .btn-green { background: #28a745; }
-        .btn-red { background: #dc3545; }
-        .btn-blue { background: #007bff; width: 100%; }
+        .section { background: var(--bg-color); border-radius: 14px; padding: 16px; border: 1px solid var(--border-color); }
+        .section h3 { font-size: 15px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; color: var(--text-color); }
+
+        /* 表單與按鈕互動 */
+        .form-row { display: flex; gap: 8px; margin-bottom: 10px; }
+        input, select { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 10px; font-size: 14px; background: var(--input-bg); color: var(--text-color); outline: none; }
+        input:focus, select:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
+
+        button { padding: 12px 16px; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; color: white; transition: transform 0.1s, opacity 0.2s; }
+        button:active { transform: scale(0.97); }
+        .btn-green { background: #10b981; }
+        .btn-red { background: #ef4444; }
+        .btn-blue { background: #3b82f6; width: 100%; }
 
         /* 股票統計看板 */
-        .stock-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: #f0f4f8; padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 13px; color: #444; }
+        .stock-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: var(--card-bg); padding: 12px; border-radius: 10px; margin-bottom: 12px; font-size: 13px; border: 1px solid var(--border-color); }
         .stock-stats div { display: flex; flex-direction: column; }
-        .stock-stats b { font-size: 15px; margin-top: 2px; }
+        .stock-stats b { font-size: 16px; margin-top: 2px; }
 
         /* 列表樣式 */
         .list { list-style: none; padding: 0; margin: 0; max-height: 200px; overflow-y: auto; }
-        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; font-size: 14px; }
+        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-color); font-size: 14px; }
         .item-actions { display: flex; align-items: center; gap: 6px; }
-        .icon-btn { background: none; border: none; padding: 2px 4px; font-size: 14px; cursor: pointer; opacity: 0.7; }
+        .icon-btn { background: none; border: none; padding: 4px; font-size: 14px; cursor: pointer; opacity: 0.6; }
         .icon-btn:hover { opacity: 1; }
-        
-        .text-plus { color: #28a745; font-weight: bold; }
-        .text-minus { color: #dc3545; font-weight: bold; }
-        .link-text { font-size: 11px; color: #888; margin-top: 2px; }
-        .empty-tip { text-align: center; color: #888; font-size: 13px; padding: 10px 0; margin: 0; }
 
-        /* 彈跳視窗 (Modal) 樣式 */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 9999; padding: 20px; }
-        .modal-box { background: white; width: 100%; max-width: 320px; border-radius: 14px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); display: flex; flex-direction: column; gap: 14px; }
-        .modal-box h3 { font-size: 18px; color: #333; margin: 0; }
+        .text-plus { color: #10b981; font-weight: 700; }
+        .text-minus { color: #ef4444; font-weight: 700; }
+        .link-text { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+        .empty-tip { text-align: center; color: var(--text-secondary); font-size: 13px; padding: 10px 0; margin: 0; }
+
+        /* 彈跳視窗 */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: none; justify-content: center; align-items: center; z-index: 9999; padding: 20px; }
+        .modal-box { background: var(--card-bg); width: 100%; max-width: 320px; border-radius: 18px; padding: 22px; box-shadow: 0 15px 35px rgba(0,0,0,0.3); display: flex; flex-direction: column; gap: 14px; }
+        .modal-box h3 { font-size: 18px; color: var(--text-color); margin: 0; }
         .modal-btns { display: flex; gap: 10px; }
 
-        /* 重置按鈕樣式 */
-        .btn-reset { background: transparent; border: none; color: #dc3545; font-size: 13px; cursor: pointer; text-decoration: underline; width: 100%; text-align: center; padding: 6px; }
+        .btn-reset { background: transparent; border: none; color: #ef4444; font-size: 13px; cursor: pointer; text-decoration: underline; width: 100%; text-align: center; padding: 6px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>🐷 個人財務小幫手</h2>
+    <div class="header-row">
+        <h2>🐷 個人財務小幫手</h2>
+        <button class="theme-btn" onclick="toggleTheme()">🌓 切換模式</button>
+    </div>
     
     <!-- 總資產與目標面板 -->
     <div class="dashboard-card">
@@ -89,7 +118,7 @@
 
     <!-- 多銀行帳戶管理 -->
     <div class="section">
-        <h3><span>💳 銀行帳戶餘額</span> <button onclick="openAccModal()" style="font-size:11px; padding:4px 8px; width:auto;" class="btn-blue">+ 新增帳戶</button></h3>
+        <h3><span>💳 銀行帳戶餘額</span> <button onclick="openAccModal()" style="font-size:11px; padding:6px 10px; width:auto;" class="btn-blue">+ 新增帳戶</button></h3>
         <ul class="list" id="accountList"></ul>
     </div>
 
@@ -111,7 +140,7 @@
         </div>
         <button class="btn-green" style="width:100%; margin-bottom: 12px;" onclick="handleTransaction()">記一筆</button>
         
-        <div style="font-size: 13px; font-weight: 600; color: #555; margin-bottom: 6px;">近期的收支明細</div>
+        <div style="font-size: 13px; font-weight: 600; margin-bottom: 6px;">近期的收支明細</div>
         <ul class="list" id="txHistoryList"></ul>
     </div>
 
@@ -202,6 +231,16 @@
 </div>
 
 <script>
+    // 主題切換邏輯
+    function toggleTheme() {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+    }
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+
     let defaultData = {
         targetGoal: 100000,
         accounts: [],
@@ -287,13 +326,13 @@
     }
 
     function deleteAccount(accId) {
-        if (confirm("確定要刪除這個帳戶嗎？（不會自動刪除過去的歷史明細）")) {
+        if (confirm("確定要刪除這個帳戶嗎？")) {
             appData.accounts = appData.accounts.filter(a => a.id !== accId);
             saveData();
         }
     }
 
-    // --- 一般收支編輯 ---
+    // --- 收支紀錄 ---
     function openTxEditModal(txId) {
         let tx = appData.transactions.find(t => t.id === txId);
         if (!tx) return;
@@ -319,16 +358,13 @@
 
         let account = appData.accounts.find(a => a.id === tx.accId);
         if (account) {
-            // 1. 先還原舊紀錄的影響
             if (tx.type === 'deposit') account.balance -= tx.amount;
             else account.balance += tx.amount;
 
-            // 2. 套用新紀錄的影響
             if (newType === 'deposit') account.balance += newAmount;
             else account.balance -= newAmount;
         }
 
-        // 更新紀錄內容
         tx.type = newType;
         tx.note = newNote;
         tx.amount = newAmount;
@@ -351,7 +387,7 @@
         saveData();
     }
 
-    // --- 股票紀錄編輯 ---
+    // --- 股票紀錄 ---
     function openStockEditModal(stId) {
         let st = appData.stocks.find(s => s.id === stId);
         if (!st) return;
@@ -360,7 +396,6 @@
         document.getElementById('editStockName').value = st.name;
         document.getElementById('editStockPnl').value = st.pnl;
 
-        // 渲染股票編輯彈窗中的帳戶下拉選單
         const select = document.getElementById('editStockAccSelect');
         select.innerHTML = '';
         appData.accounts.forEach(acc => {
@@ -385,15 +420,12 @@
         let st = appData.stocks.find(s => s.id === stId);
         if (!st) return;
 
-        // 還原原帳戶金額
         let oldAccount = appData.accounts.find(a => a.id === st.accId);
         if (oldAccount) oldAccount.balance -= st.pnl;
 
-        // 更新新帳戶金額
         let newAccount = appData.accounts.find(a => a.id === newAccId);
         if (newAccount) newAccount.balance += newPnl;
 
-        // 更新股票紀錄
         st.name = newName;
         st.pnl = newPnl;
         st.accId = newAccId;
@@ -413,13 +445,11 @@
         saveData();
     }
 
-    // --- UI 渲染核心 ---
+    // --- UI 渲染 ---
     function renderUI() {
-        // 1. 總資產
         let totalAsset = appData.accounts.reduce((sum, acc) => sum + acc.balance, 0);
         document.getElementById('totalBalance').innerText = `$${totalAsset.toLocaleString()}`;
 
-        // 2. 目標進度
         let goal = appData.targetGoal || 100000;
         let diff = goal - totalAsset;
         let percent = Math.min(Math.max((totalAsset / goal) * 100, 0), 100);
@@ -428,7 +458,6 @@
         document.getElementById('diffText').innerText = diff > 0 ? `還差：$${diff.toLocaleString()}` : `已達成目標！🎉`;
         document.getElementById('progressBar').style.width = `${percent}%`;
 
-        // 3. 渲染銀行帳戶列表
         const accList = document.getElementById('accountList');
         const accSelect = document.getElementById('accSelect');
         const stockAccSelect = document.getElementById('stockAccSelect');
@@ -451,8 +480,8 @@
                     <span><b>${acc.name}</b></span>
                     <div class="item-actions">
                         <b>$${acc.balance.toLocaleString()}</b>
-                        <button class="icon-btn" onclick="openAccModal('${acc.id}')" title="編輯帳戶">✏️</button>
-                        <button class="icon-btn" onclick="deleteAccount('${acc.id}')" title="刪除帳戶">🗑️</button>
+                        <button class="icon-btn" onclick="openAccModal('${acc.id}')" title="編輯">✏️</button>
+                        <button class="icon-btn" onclick="deleteAccount('${acc.id}')" title="刪除">🗑️</button>
                     </div>
                 `;
                 accList.appendChild(li);
@@ -467,11 +496,10 @@
             });
         }
 
-        // 4. 渲染一般收支歷史紀錄
         const txHistoryList = document.getElementById('txHistoryList');
         txHistoryList.innerHTML = '';
         if (appData.transactions.length === 0) {
-            txHistoryList.innerHTML = '<p class="empty-tip">尚無一般收支明細</p>';
+            txHistoryList.innerHTML = '<p class="empty-tip">尚無收支明細</p>';
         } else {
             appData.transactions.slice().reverse().forEach(tx => {
                 const accObj = appData.accounts.find(a => a.id === tx.accId);
@@ -486,15 +514,14 @@
                     </div>
                     <div class="item-actions">
                         <span class="${isDeposit ? 'text-plus' : 'text-minus'}">${isDeposit ? '+' : '-'}$${tx.amount.toLocaleString()}</span>
-                        <button class="icon-btn" onclick="openTxEditModal('${tx.id}')" title="編輯紀錄">✏️</button>
-                        <button class="icon-btn" onclick="deleteTransaction('${tx.id}')" title="刪除紀錄">🗑️</button>
+                        <button class="icon-btn" onclick="openTxEditModal('${tx.id}')">✏️</button>
+                        <button class="icon-btn" onclick="deleteTransaction('${tx.id}')">🗑️</button>
                     </div>
                 `;
                 txHistoryList.appendChild(li);
             });
         }
 
-        // 5. 股票統計與紀錄
         let stockTotalPnl = appData.stocks.reduce((sum, st) => sum + st.pnl, 0);
         let totalTrades = appData.stocks.length;
         let winTrades = appData.stocks.filter(st => st.pnl > 0).length;
@@ -524,8 +551,8 @@
                     </div>
                     <div class="item-actions">
                         <span class="${isProfit ? 'text-plus' : 'text-minus'}">${isProfit ? '+' : ''}$${st.pnl.toLocaleString()}</span>
-                        <button class="icon-btn" onclick="openStockEditModal('${st.id}')" title="編輯紀錄">✏️</button>
-                        <button class="icon-btn" onclick="deleteStockTrade('${st.id}')" title="刪除紀錄">🗑️</button>
+                        <button class="icon-btn" onclick="openStockEditModal('${st.id}')">✏️</button>
+                        <button class="icon-btn" onclick="deleteStockTrade('${st.id}')">🗑️</button>
                     </div>
                 `;
                 stockList.appendChild(li);
