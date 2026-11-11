@@ -288,7 +288,7 @@ button:active {
     background: var(--input-bg);
     padding: 12px;
     border-radius: 14px;
-    margin-bottom: 14px;
+    margin-bottom: 8px;
     font-size: 11px;
     text-align: center;
     border: 1px dashed var(--border-color);
@@ -383,6 +383,12 @@ button:active {
 .modal-box h3 { font-size: 18px; color: var(--text-color); margin: 0; }
 .modal-btns { display: flex; gap: 10px; margin-top: 4px; }
 
+/* 開銷怪獸比例條 */
+.monster-list { display: flex; flex-direction: column; gap: 12px; max-height: 300px; overflow-y: auto; margin-top: 10px; }
+.monster-item { font-size: 13px; color: var(--text-color); font-weight: 600; }
+.monster-bar-bg { background: rgba(217, 166, 160, 0.2); border-radius: 8px; height: 10px; width: 100%; margin-top: 6px; overflow: hidden; }
+.monster-bar-fill { background: var(--rose); height: 100%; border-radius: 8px; transition: width 0.5s ease; }
+
 /* 重置按鈕 */
 .btn-reset {
     background: transparent;
@@ -424,7 +430,7 @@ button:active {
 
 <div class="container">
     <div class="header-row">
-        <h2>🐱 個人財務小幫手</h2>
+        <h2>🐱 理財小幫手</h2>
         <button class="theme-btn" onclick="toggleTheme()">🌓 切換模式</button>
     </div>
     
@@ -461,6 +467,9 @@ button:active {
             <div><span>本月支出</span><b class="text-minus" id="monthExpense">$0</b></div>
             <div><span>本月結餘</span><b id="monthBalance">$0</b></div>
         </div>
+        
+        <!-- 開銷怪獸按鈕 -->
+        <button class="btn-reset" style="margin-bottom: 12px; font-weight: 800; color: var(--accent-dark); background: rgba(201, 169, 130, 0.1); border-radius: 12px;" onclick="openMonsterModal()">👾 本月開銷怪獸排行榜</button>
 
         <div class="form-row">
             <select id="accSelect">
@@ -518,7 +527,6 @@ button:active {
     <div style="display: flex; gap: 10px; margin-bottom: 15px; margin-top: 5px;">
         <button class="btn-blue" style="background: transparent; color: var(--text-color); border: 1px solid var(--sage); flex: 1;" onclick="exportData()">📥 備份下載</button>
         <button class="btn-blue" style="background: transparent; color: var(--text-color); border: 1px solid var(--accent); flex: 1;" onclick="document.getElementById('importFile').click()">📤 匯入還原</button>
-
         <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importData(event)">
     </div>
     <div>
@@ -568,7 +576,7 @@ button:active {
         </div>
         <input type="hidden" id="holdingType" value="spot">
 
-        <input type="text" id="holdingName" placeholder="股票名稱/代號 (例: 台積電 2330 / AAPL)">
+        <input type="text" id="holdingName" placeholder="股票名稱/代號 (例: 台積電 / AAPL)">
         <div class="form-row" style="margin-bottom:0;">
             <input type="number" id="holdingShares" placeholder="持有股數 (備註)">
             <input type="number" id="holdingBuyPrice" placeholder="買入單價 (備註)">
@@ -617,6 +625,20 @@ button:active {
     </div>
 </div>
 
+<!-- 6. 開銷怪獸排行榜彈窗 -->
+<div class="modal-overlay" id="monsterModal">
+    <div class="modal-box">
+        <h3>👾 本月開銷怪獸</h3>
+        <div style="font-size: 12px; color: var(--text-secondary); margin-top: -6px;">看看錢錢都變成什麼形狀了...</div>
+        <div class="monster-list" id="monsterListContainer">
+            <!-- 這裡會由 JS 自動生成排行榜 -->
+        </div>
+        <div class="modal-btns" style="margin-top: 15px;">
+            <button class="btn-blue" style="width:100%;" onclick="closeModal('monsterModal')">關閉</button>
+        </div>
+    </div>
+</div>
+
 <script>
     function toggleTheme() {
         const currentTheme = document.documentElement.getAttribute('data-theme');
@@ -659,7 +681,6 @@ button:active {
         reader.onload = function(e) {
             try {
                 let parsed = JSON.parse(e.target.result);
-                // 簡單驗證檔案結構
                 if(parsed && parsed.accounts !== undefined && parsed.transactions !== undefined) {
                     appData = parsed;
                     saveData();
@@ -670,7 +691,7 @@ button:active {
             } catch(err) {
                 alert("⚠️ 讀取檔案失敗！");
             }
-            event.target.value = ''; // 讓同一個檔案可以重複選取
+            event.target.value = ''; 
         };
         reader.readAsText(file);
     }
@@ -695,7 +716,7 @@ button:active {
     // --- 收支分類邏輯 ---
     const categories = {
         deposit: ['💼 薪水', '📈 投資獲利', '🧧 獎金', '💵 其他收入'],
-        withdraw: ['🍜 飲食', '🚗 交通', '🛍️ 購物', '🏠 生活', '🎉 娛樂', '🏥 醫療', '🐱 寵物', '💸 其他支出']
+        withdraw: ['🍜 飲食', '🚗 交通', '🛍️ 購物', '🗒️ 帳單', '🎉 娛樂', '🏥 醫療', '🐱 寵物', '💸 其他支出']
     };
 
     function updateCategoryOptions(selectId = 'txCategory', typeId = 'txType', defaultVal = '') {
@@ -710,6 +731,51 @@ button:active {
             if (cat === defaultVal) opt.selected = true;
             catSelect.appendChild(opt);
         });
+    }
+
+    // --- 👾 開銷怪獸排行榜邏輯 ---
+    function openMonsterModal() {
+        let currentMonthStr = (new Date().getMonth() + 1) + '/';
+        let expenseCategories = {};
+        let totalExpense = 0;
+
+        appData.transactions.forEach(tx => {
+            if (tx.date.startsWith(currentMonthStr) && tx.type === 'withdraw') {
+                let cat = tx.category || '未分類';
+                expenseCategories[cat] = (expenseCategories[cat] || 0) + tx.amount;
+                totalExpense += tx.amount;
+            }
+        });
+
+        const container = document.getElementById('monsterListContainer');
+        container.innerHTML = '';
+
+        if (totalExpense === 0) {
+            container.innerHTML = '<p class="empty-tip">本月還沒有任何花費喔！</p>';
+        } else {
+            let sortedMonsters = Object.keys(expenseCategories).map(cat => {
+                return { name: cat, amount: expenseCategories[cat] };
+            }).sort((a, b) => b.amount - a.amount);
+
+            sortedMonsters.forEach(item => {
+                let percent = Math.round((item.amount / totalExpense) * 100);
+                
+                const div = document.createElement('div');
+                div.className = 'monster-item';
+                div.innerHTML = `
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>${item.name}</span>
+                        <span class="text-minus">-$${item.amount.toLocaleString()} (${percent}%)</span>
+                    </div>
+                    <div class="monster-bar-bg">
+                        <div class="monster-bar-fill" style="width: ${percent}%;"></div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        document.getElementById('monsterModal').style.display = 'flex';
     }
 
     // --- 目標金額 ---
@@ -864,7 +930,6 @@ button:active {
         document.getElementById('editTxNote').value = tx.note || '';
         document.getElementById('editTxAmount').value = tx.amount;
         
-        // 載入該筆紀錄的分類
         updateCategoryOptions('editTxCategory', 'editTxType', tx.category);
         
         document.getElementById('txEditModal').style.display = 'flex';
@@ -1068,7 +1133,6 @@ button:active {
         const txHistoryList = document.getElementById('txHistoryList');
         txHistoryList.innerHTML = '';
         
-        // 本月結算邏輯
         let currentMonthStr = (new Date().getMonth() + 1) + '/';
         let monthIn = 0;
         let monthOut = 0;
@@ -1077,7 +1141,6 @@ button:active {
             txHistoryList.innerHTML = '<p class="empty-tip">尚無收支明細</p>';
         } else {
             appData.transactions.slice().reverse().forEach(tx => {
-                // 檢查是否為本月紀錄
                 if (tx.date.startsWith(currentMonthStr)) {
                     if (tx.type === 'deposit') monthIn += tx.amount;
                     else monthOut += tx.amount;
@@ -1087,10 +1150,8 @@ button:active {
                 const accName = accObj ? accObj.name : '未知帳戶';
                 const isDeposit = tx.type === 'deposit';
                 
-                // 分類與備註顯示邏輯
                 let displayCat = tx.category ? `<span class="badge badge-cash cat-tag">${tx.category}</span>` : '';
                 let displayNote = tx.note ? tx.note : '';
-                // 若兩者都沒有，給個預設文字
                 if(!tx.category && !tx.note) displayNote = isDeposit ? '存入' : '提領';
 
                 const li = document.createElement('li');
@@ -1110,7 +1171,6 @@ button:active {
             });
         }
         
-        // 渲染本月結算數字
         let monthBal = monthIn - monthOut;
         document.getElementById('monthIncome').innerText = `+$${monthIn.toLocaleString()}`;
         document.getElementById('monthExpense').innerText = `-$${monthOut.toLocaleString()}`;
