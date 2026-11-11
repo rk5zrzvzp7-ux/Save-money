@@ -51,8 +51,7 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
         "Noto Sans TC", sans-serif;
     -webkit-tap-highlight-color: transparent;
-    transition: background-color 0.25s, color 0.25s,
-        border-color 0.25s;
+    transition: background-color 0.25s, color 0.25s, border-color 0.25s;
 }
 
 body {
@@ -233,28 +232,36 @@ button:active {
     transform: scale(0.97);
 }
 
-.btn-green {
-    background: var(--sage);
-    color: #fff;
+.btn-green { background: var(--sage); color: #fff; }
+.btn-green:hover { background: var(--sage-dark); }
+.btn-red { background: var(--rose); color: white; }
+.btn-blue { background: var(--accent); color: white; width: 100%; }
+.btn-blue:hover { background: var(--accent-dark); }
+
+/* 切換分頁 Segments */
+.segment-group {
+    display: flex;
+    background: var(--input-bg);
+    border-radius: 10px;
+    padding: 3px;
+    border: 1px solid var(--border-color);
 }
 
-.btn-green:hover {
-    background: var(--sage-dark);
+.segment-btn {
+    flex: 1;
+    padding: 6px;
+    font-size: 12px;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-secondary);
+    border: none;
+    cursor: pointer;
 }
 
-.btn-red {
-    background: var(--rose);
-    color: white;
-}
-
-.btn-blue {
-    background: var(--accent);
-    color: white;
-    width: 100%;
-}
-
-.btn-blue:hover {
-    background: var(--accent-dark);
+.segment-btn.active {
+    background: var(--card-bg);
+    color: var(--text-color);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
 }
 
 /* 股票統計看板 */
@@ -270,16 +277,8 @@ button:active {
     border: 1px solid var(--border-color);
 }
 
-.stock-stats div {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.stock-stats b {
-    font-size: 15px;
-    margin-top: 2px;
-}
+.stock-stats div { display: flex; flex-direction: column; gap: 4px; }
+.stock-stats b { font-size: 15px; margin-top: 2px; }
 
 /* 清單 */
 .list {
@@ -300,9 +299,7 @@ button:active {
     font-size: 13px;
 }
 
-.list-item:last-child {
-    border-bottom: none;
-}
+.list-item:last-child { border-bottom: none; }
 
 .item-actions {
     display: flex;
@@ -320,33 +317,22 @@ button:active {
     cursor: pointer;
 }
 
-.icon-btn:hover {
-    opacity: 1;
-}
+.icon-btn:hover { opacity: 1; }
 
-.text-plus {
-    color: #7E9C72;
-    font-weight: 800;
-}
+.text-plus { color: #7E9C72; font-weight: 800; }
+.text-minus { color: #D68C86; font-weight: 800; }
+.link-text { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+.empty-tip { text-align: center; color: var(--text-secondary); font-size: 13px; padding: 14px 0; margin: 0; }
 
-.text-minus {
-    color: #D68C86;
-    font-weight: 800;
+.badge {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-weight: 700;
+    margin-left: 4px;
 }
-
-.link-text {
-    font-size: 11px;
-    color: var(--text-secondary);
-    margin-top: 4px;
-}
-
-.empty-tip {
-    text-align: center;
-    color: var(--text-secondary);
-    font-size: 13px;
-    padding: 14px 0;
-    margin: 0;
-}
+.badge-margin { background: rgba(217, 166, 160, 0.25); color: #C98D86; }
+.badge-cash { background: rgba(169, 185, 156, 0.25); color: #7E9C72; }
 
 /* 彈跳視窗 */
 .modal-overlay {
@@ -375,17 +361,8 @@ button:active {
     gap: 12px;
 }
 
-.modal-box h3 {
-    font-size: 18px;
-    color: var(--text-color);
-    margin: 0;
-}
-
-.modal-btns {
-    display: flex;
-    gap: 10px;
-    margin-top: 4px;
-}
+.modal-box h3 { font-size: 18px; color: var(--text-color); margin: 0; }
+.modal-btns { display: flex; gap: 10px; margin-top: 4px; }
 
 /* 重置按鈕 */
 .btn-reset {
@@ -413,38 +390,14 @@ button:active {
     text-transform: uppercase;
 }
 
-/* 手機版 */
 @media (max-width: 380px) {
-    body {
-        padding: 10px;
-    }
-
-    .container {
-        padding: 16px;
-        border-radius: 20px;
-        gap: 16px;
-    }
-
-    h2 {
-        font-size: 17px;
-    }
-
-    .total-amount {
-        font-size: 30px;
-    }
-
-    .section {
-        padding: 13px;
-    }
-
-    .form-row {
-        gap: 6px;
-    }
-
-    input, select {
-        padding: 10px;
-        font-size: 13px;
-    }
+    body { padding: 10px; }
+    .container { padding: 16px; border-radius: 20px; gap: 16px; }
+    h2 { font-size: 17px; }
+    .total-amount { font-size: 30px; }
+    .section { padding: 13px; }
+    .form-row { gap: 6px; }
+    input, select { padding: 10px; font-size: 13px; }
 }
     </style>
 </head>
@@ -500,19 +453,19 @@ button:active {
         <div style="font-size: 13px; font-weight: 600; margin-bottom: 6px;">近期的收支明細</div>
         <ul class="list" id="txHistoryList"></ul>
     </div>
-
-	<!-- 📊 股票庫存管理  -->
+	
+	<!-- 📊 股票庫存管理 -->
     <div class="section">
         <h3><span>📊 股票庫存管理</span> <button onclick="openHoldingModal()" style="font-size:11px; padding:6px 10px; width:auto;" class="btn-blue">+ 新增持股</button></h3>
         <div class="stock-stats" style="grid-template-columns: 1fr;">
-            <div><span>持股總成本</span><b id="holdingTotalCost">$0</b></div>
+            <div><span>未實現損益</span><b id="holdingTotalCost">$0</b></div>
         </div>
         <ul class="list" id="holdingList"></ul>
     </div>
-	
+
     <!-- 股票歷史交易損益記錄 -->
     <div class="section">
-        <h3>📈 已實現股票交易紀錄</h3>
+        <h3>📈 股票交易紀錄</h3>
         <div class="stock-stats">
             <div><span>已實現總損益</span><b id="stockTotalPnl">$0</b></div>
             <div><span>勝率 (獲利/總筆數)</span><b id="stockWinRate">0% (0/0)</b></div>
@@ -565,14 +518,29 @@ button:active {
     </div>
 </div>
 
-<!-- 3. 新增/編輯股票庫存彈窗 -->
+<!-- 3. 新增/編輯股票庫存彈窗 (含現股/融資) -->
 <div class="modal-overlay" id="holdingModal">
     <div class="modal-box">
         <h3 id="holdingModalTitle">新增持股庫存</h3>
         <input type="hidden" id="editHoldingId">
+        
+        <!-- 現股/融資 切換 -->
+        <div class="segment-group">
+            <button type="button" class="segment-btn active" id="typeSpotBtn" onclick="setHoldingType('spot')">現股</button>
+            <button type="button" class="segment-btn" id="typeMarginBtn" onclick="setHoldingType('margin')">融資</button>
+        </div>
+        <input type="hidden" id="holdingType" value="spot">
+
         <input type="text" id="holdingName" placeholder="股票名稱/代號 (例: 台積電 2330)">
         <input type="number" id="holdingShares" placeholder="持有股數 (例: 1000)">
-        <input type="number" id="holdingBuyPrice" placeholder="買入成本 (例: 950)">
+        <input type="number" id="holdingBuyPrice" placeholder="買入單價 (例: 100)">
+        
+        <!-- 融資成數設定 -->
+        <div id="marginRateContainer" style="display: none;">
+            <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 2px;">融資成數 (%)</div>
+            <input type="number" id="marginRate" placeholder="預設 60" value="60">
+        </div>
+
         <div class="modal-btns">
             <button class="btn-red" style="flex:1;" onclick="closeModal('holdingModal')">取消</button>
             <button class="btn-green" style="flex:1;" onclick="saveHolding()">儲存持股</button>
@@ -614,7 +582,6 @@ button:active {
 </div>
 
 <script>
-    // 主題切換邏輯
     function toggleTheme() {
         const currentTheme = document.documentElement.getAttribute('data-theme');
         const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
@@ -717,7 +684,20 @@ button:active {
         }
     }
 
-    // --- 📊 股票庫存管理 ---
+    // --- 📊 股票庫存管理 (現股/融資) ---
+    function setHoldingType(type) {
+        document.getElementById('holdingType').value = type;
+        if (type === 'spot') {
+            document.getElementById('typeSpotBtn').className = 'segment-btn active';
+            document.getElementById('typeMarginBtn').className = 'segment-btn';
+            document.getElementById('marginRateContainer').style.display = 'none';
+        } else {
+            document.getElementById('typeSpotBtn').className = 'segment-btn';
+            document.getElementById('typeMarginBtn').className = 'segment-btn active';
+            document.getElementById('marginRateContainer').style.display = 'block';
+        }
+    }
+
     function openHoldingModal(hId = null) {
         if (hId) {
             let h = appData.holdings.find(item => item.id === hId);
@@ -727,12 +707,18 @@ button:active {
             document.getElementById('holdingName').value = h.name;
             document.getElementById('holdingShares').value = h.shares;
             document.getElementById('holdingBuyPrice').value = h.buyPrice;
+            
+            let hType = h.type || 'spot';
+            setHoldingType(hType);
+            document.getElementById('marginRate').value = h.marginRate || 60;
         } else {
             document.getElementById('holdingModalTitle').innerText = '新增持股庫存';
             document.getElementById('editHoldingId').value = '';
             document.getElementById('holdingName').value = '';
             document.getElementById('holdingShares').value = '';
             document.getElementById('holdingBuyPrice').value = '';
+            setHoldingType('spot');
+            document.getElementById('marginRate').value = '60';
         }
         document.getElementById('holdingModal').style.display = 'flex';
     }
@@ -742,6 +728,8 @@ button:active {
         let name = document.getElementById('holdingName').value.trim();
         let shares = parseFloat(document.getElementById('holdingShares').value);
         let buyPrice = parseFloat(document.getElementById('holdingBuyPrice').value);
+        let type = document.getElementById('holdingType').value;
+        let marginRate = parseFloat(document.getElementById('marginRate').value) || 60;
 
         if (!name || isNaN(shares) || isNaN(buyPrice)) {
             alert('請填寫完整資訊與正確金額！'); return;
@@ -753,13 +741,17 @@ button:active {
                 h.name = name;
                 h.shares = shares;
                 h.buyPrice = buyPrice;
+                h.type = type;
+                h.marginRate = marginRate;
             }
         } else {
             appData.holdings.push({
                 id: Date.now().toString(),
                 name: name,
                 shares: shares,
-                buyPrice: buyPrice
+                buyPrice: buyPrice,
+                type: type,
+                marginRate: marginRate
             });
         }
 
@@ -889,9 +881,18 @@ button:active {
 
     // --- UI 渲染 ---
     function renderUI() {
-        // 1. 計算現金與庫存總成本
         let totalCash = appData.accounts.reduce((sum, acc) => sum + acc.balance, 0);
-        let totalHoldingCost = appData.holdings.reduce((sum, h) => sum + (h.shares * h.buyPrice), 0);
+
+        // 計算自備成本
+        let totalHoldingCost = appData.holdings.reduce((sum, h) => {
+            let fullCost = h.shares * h.buyPrice;
+            if (h.type === 'margin') {
+                let marginRatio = (h.marginRate || 60) / 100;
+                let ownRatio = 1 - marginRatio; // 自備成數
+                return sum + (fullCost * ownRatio);
+            }
+            return sum + fullCost;
+        }, 0);
 
         let totalAsset = totalCash + totalHoldingCost;
         document.getElementById('totalBalance').innerText = `$${Math.round(totalAsset).toLocaleString()}`;
@@ -906,7 +907,7 @@ button:active {
         document.getElementById('diffText').innerText = diff > 0 ? `還差：$${diff.toLocaleString()}` : `已達成目標！🎉`;
         document.getElementById('progressBar').style.width = `${percent}%`;
 
-        // 2. 銀行帳戶列表
+        // 銀行帳戶
         const accList = document.getElementById('accountList');
         const accSelect = document.getElementById('accSelect');
         const stockAccSelect = document.getElementById('stockAccSelect');
@@ -945,7 +946,7 @@ button:active {
             });
         }
 
-        // 3. 📊 渲染股票庫存列表與總成本
+        // 📊 股票庫存
         document.getElementById('holdingTotalCost').innerText = `$${Math.round(totalHoldingCost).toLocaleString()}`;
 
         const holdingList = document.getElementById('holdingList');
@@ -954,14 +955,23 @@ button:active {
             holdingList.innerHTML = '<p class="empty-tip">尚無持股庫存，請點擊「+ 新增持股」</p>';
         } else {
             appData.holdings.forEach(h => {
-                let cost = h.shares * h.buyPrice;
+                let isMargin = h.type === 'margin';
+                let fullCost = h.shares * h.buyPrice;
+                let ownCost = isMargin ? fullCost * (1 - (h.marginRate || 60)/100) : fullCost;
 
                 const li = document.createElement('li');
                 li.className = 'list-item';
                 li.innerHTML = `
                     <div>
-                        <div><b>${h.name}</b> <span style="font-size:12px; opacity:0.8;">(${h.shares.toLocaleString()}股)</span></div>
-                        <div class="link-text">買入成本: $${h.buyPrice} | 總計: $${Math.round(cost).toLocaleString()}</div>
+                        <div>
+                            <b>${h.name}</b> 
+                            <span style="font-size:12px; opacity:0.8;">(${h.shares.toLocaleString()}股)</span>
+                            <span class="badge ${isMargin ? 'badge-margin' : 'badge-cash'}">${isMargin ? `融資${h.marginRate||60}%` : '現股'}</span>
+                        </div>
+                        <div class="link-text">
+                            買入單價: $${h.buyPrice} | 
+                            ${isMargin ? `自備款: $${Math.round(ownCost).toLocaleString()} (總額:$${Math.round(fullCost).toLocaleString()})` : `總計: $${Math.round(fullCost).toLocaleString()}`}
+                        </div>
                     </div>
                     <div class="item-actions">
                         <button class="icon-btn" onclick="openHoldingModal('${h.id}')" title="編輯持股">✏️</button>
@@ -972,7 +982,7 @@ button:active {
             });
         }
 
-        // 4. 收支明細列表
+        // 收支明細
         const txHistoryList = document.getElementById('txHistoryList');
         txHistoryList.innerHTML = '';
         if (appData.transactions.length === 0) {
@@ -999,7 +1009,7 @@ button:active {
             });
         }
 
-        // 5. 已實現股票歷史交易
+        // 已實現股票紀錄
         let stockTotalPnl = appData.stocks.reduce((sum, st) => sum + st.pnl, 0);
         let totalTrades = appData.stocks.length;
         let winTrades = appData.stocks.filter(st => st.pnl > 0).length;
