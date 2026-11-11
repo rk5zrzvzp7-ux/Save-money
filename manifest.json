@@ -1,0 +1,17 @@
+{
+  "name": "存錢小幫手",
+  "short_name": "存錢幫手",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f4f6f8",
+  "theme_color": "#4facfe",
+  "description": "個人離線存錢與記帳 PWA 應用程式",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2855/2855572.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
