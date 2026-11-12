@@ -443,7 +443,7 @@ button:active {
         <div class="target-info">
             <span id="targetText">目標：$100,000</span>
             <span id="diffText">還差：$100,000</span>
-            <button class="btn-edit-target" onclick="openTargetModal()">✏️ 設定目標</button>
+            <button class="btn-edit-target" onclick="openTargetModal()">🌟 設定目標</button>
         </div>
         
         <div class="progress-bar-container">
@@ -457,7 +457,7 @@ button:active {
         <ul class="list" id="accountList"></ul>
     </div>
 
-    <!-- 💰 收支 / 本月結算 (新增分類與結算) -->
+    <!-- 💰 收支 / 本月結算 -->
     <div class="section">
         <h3>💰 一般收支 / 存提款</h3>
         
@@ -503,9 +503,9 @@ button:active {
         <ul class="list" id="holdingList"></ul>
     </div>
 
-    <!-- 股票歷史交易損益記錄 -->
+    <!-- 📈 已實現股票戰績筆記本 (獨立計算，不扣銀行存款) -->
     <div class="section">
-        <h3>📈 股票交易紀錄</h3>
+        <h3>📈 股票戰績紀錄簿</h3>
         <div class="stock-stats">
             <div><span>已實現總損益</span><b id="stockTotalPnl">$0</b></div>
             <div><span>勝率 (獲利/總筆數)</span><b id="stockWinRate">0% (0/0)</b></div>
@@ -514,12 +514,8 @@ button:active {
             <input type="text" id="stockName" placeholder="股票名稱/代號 (例如: 台積電)">
             <input type="number" id="stockPnl" placeholder="損益金額 (+賺/-賠)">
         </div>
-        <div class="form-row">
-            <select id="stockAccSelect">
-                <option value="">請先新增帳戶</option>
-            </select>
-            <button class="btn-blue" onclick="handleStockTrade()">記錄損益並更新帳戶</button>
-        </div>
+        <button class="btn-blue" style="width:100%;" onclick="handleStockTrade()">記一筆</button>
+        
         <ul class="list" id="stockList" style="margin-top: 10px;"></ul>
     </div>
 
@@ -563,25 +559,23 @@ button:active {
     </div>
 </div>
 
-<!-- 3. 新增/編輯股票庫存彈窗 (純手動成本主導) -->
+<!-- 3. 新增/編輯股票庫存彈窗 -->
 <div class="modal-overlay" id="holdingModal">
     <div class="modal-box">
         <h3 id="holdingModalTitle">新增持股庫存</h3>
         <input type="hidden" id="editHoldingId">
         
-        <!-- 現股/融資 標籤切換 -->
         <div class="segment-group">
             <button type="button" class="segment-btn active" id="typeSpotBtn" onclick="setHoldingType('spot')">現股</button>
             <button type="button" class="segment-btn" id="typeMarginBtn" onclick="setHoldingType('margin')">融資</button>
         </div>
         <input type="hidden" id="holdingType" value="spot">
 
-        <input type="text" id="holdingName" placeholder="股票名稱/代號 (例: 台積電 / AAPL)">
+        <input type="text" id="holdingName" placeholder="股票名稱/代號 (例: 台積電 2330 / AAPL)">
         <div class="form-row" style="margin-bottom:0;">
             <input type="number" id="holdingShares" placeholder="持有股數 (備註)">
             <input type="number" id="holdingBuyPrice" placeholder="買入單價 (備註)">
         </div>
-        <!-- 獨立手動輸入的總成本 -->
         <input type="number" id="holdingCustomCost" placeholder="總買入成本 (NT$) ★ 實際計算用">
 
         <div class="modal-btns">
@@ -610,14 +604,13 @@ button:active {
     </div>
 </div>
 
-<!-- 5. 編輯已實現股票紀錄彈窗 -->
+<!-- 5. 編輯已實現股票紀錄彈窗 (已移除銀行選擇) -->
 <div class="modal-overlay" id="stockEditModal">
     <div class="modal-box">
         <h3>編輯股票交易紀錄</h3>
         <input type="hidden" id="editStockId">
         <input type="text" id="editStockName" placeholder="股票名稱/代號">
         <input type="number" id="editStockPnl" placeholder="損益金額 (+賺/-賠)">
-        <select id="editStockAccSelect"></select>
         <div class="modal-btns">
             <button class="btn-red" style="flex:1;" onclick="closeModal('stockEditModal')">取消</button>
             <button class="btn-green" style="flex:1;" onclick="saveEditedStockTrade()">儲存修改</button>
@@ -979,7 +972,7 @@ button:active {
         saveData();
     }
 
-    // --- 已實現股票紀錄 ---
+    // --- 📈 已實現股票紀錄 (模式 A：無關聯銀行，純紀錄戰績) ---
     function openStockEditModal(stId) {
         let st = appData.stocks.find(s => s.id === stId);
         if (!st) return;
@@ -988,16 +981,6 @@ button:active {
         document.getElementById('editStockName').value = st.name;
         document.getElementById('editStockPnl').value = st.pnl;
 
-        const select = document.getElementById('editStockAccSelect');
-        select.innerHTML = '';
-        appData.accounts.forEach(acc => {
-            let opt = document.createElement('option');
-            opt.value = acc.id;
-            opt.innerText = acc.name;
-            if (acc.id === st.accId) opt.selected = true;
-            select.appendChild(opt);
-        });
-
         document.getElementById('stockEditModal').style.display = 'flex';
     }
 
@@ -1005,35 +988,43 @@ button:active {
         let stId = document.getElementById('editStockId').value;
         let newName = document.getElementById('editStockName').value.trim();
         let newPnl = parseFloat(document.getElementById('editStockPnl').value);
-        let newAccId = document.getElementById('editStockAccSelect').value;
 
         if (!newName || isNaN(newPnl)) { alert('請填寫完整內容與正確金額！'); return; }
 
         let st = appData.stocks.find(s => s.id === stId);
         if (!st) return;
 
-        let oldAccount = appData.accounts.find(a => a.id === st.accId);
-        if (oldAccount) oldAccount.balance -= st.pnl;
-
-        let newAccount = appData.accounts.find(a => a.id === newAccId);
-        if (newAccount) newAccount.balance += newPnl;
-
         st.name = newName;
         st.pnl = newPnl;
-        st.accId = newAccId;
 
         closeModal('stockEditModal');
         saveData();
     }
 
     function deleteStockTrade(stId) {
-        let st = appData.stocks.find(s => s.id === stId);
-        if (!st) return;
-
-        let account = appData.accounts.find(a => a.id === st.accId);
-        if (account) account.balance -= st.pnl;
-
+        // 刪除時不再需要把錢從銀行加回來，直接刪除即可
         appData.stocks = appData.stocks.filter(s => s.id !== stId);
+        saveData();
+    }
+
+    function handleStockTrade() {
+        let name = document.getElementById('stockName').value.trim();
+        let pnl = parseFloat(document.getElementById('stockPnl').value);
+
+        if (!name || isNaN(pnl)) { alert('請填寫完整的股票名稱與正確的損益金額！'); return; }
+
+        let now = new Date();
+        let dateStr = `${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+        appData.stocks.push({
+            id: Date.now().toString(),
+            name: name,
+            pnl: pnl,
+            date: dateStr
+        });
+
+        document.getElementById('stockName').value = '';
+        document.getElementById('stockPnl').value = '';
         saveData();
     }
 
@@ -1059,18 +1050,15 @@ button:active {
         // 銀行帳戶
         const accList = document.getElementById('accountList');
         const accSelect = document.getElementById('accSelect');
-        const stockAccSelect = document.getElementById('stockAccSelect');
         
         accList.innerHTML = '';
         accSelect.innerHTML = '';
-        stockAccSelect.innerHTML = '';
 
         if (appData.accounts.length === 0) {
             accList.innerHTML = '<p class="empty-tip">尚未建立帳戶，請點擊上方「+ 新增帳戶」</p>';
             let opt = document.createElement('option');
             opt.value = ""; opt.innerText = "請先新增帳戶";
             accSelect.appendChild(opt);
-            stockAccSelect.appendChild(opt.cloneNode(true));
         } else {
             appData.accounts.forEach(acc => {
                 const li = document.createElement('li');
@@ -1088,10 +1076,6 @@ button:active {
                 let opt1 = document.createElement('option');
                 opt1.value = acc.id; opt1.innerText = acc.name;
                 accSelect.appendChild(opt1);
-
-                let opt2 = document.createElement('option');
-                opt2.value = acc.id; opt2.innerText = acc.name;
-                stockAccSelect.appendChild(opt2);
             });
         }
 
@@ -1178,7 +1162,7 @@ button:active {
         balEl.innerText = `${monthBal >= 0 ? '+' : ''}$${monthBal.toLocaleString()}`;
         balEl.className = monthBal >= 0 ? 'text-plus' : 'text-minus';
 
-        // 已實現股票紀錄
+        // 已實現股票紀錄 (純戰績筆記本模式)
         let stockTotalPnl = appData.stocks.reduce((sum, st) => sum + st.pnl, 0);
         let totalTrades = appData.stocks.length;
         let winTrades = appData.stocks.filter(st => st.pnl > 0).length;
@@ -1196,15 +1180,13 @@ button:active {
             stockList.innerHTML = '<p class="empty-tip">尚無股票交易紀錄</p>';
         } else {
             appData.stocks.slice().reverse().forEach(st => {
-                const accObj = appData.accounts.find(a => a.id === st.accId);
-                const accName = accObj ? accObj.name : '未知帳戶';
                 const li = document.createElement('li');
                 li.className = 'list-item';
                 let isProfit = st.pnl >= 0;
                 li.innerHTML = `
                     <div>
                         <div><b>${st.name}</b></div>
-                        <div class="link-text">入帳戶：${accName} | ${st.date}</div>
+                        <div class="link-text">${st.date}</div>
                     </div>
                     <div class="item-actions">
                         <span class="${isProfit ? 'text-plus' : 'text-minus'}">${isProfit ? '+' : ''}$${st.pnl.toLocaleString()}</span>
@@ -1248,34 +1230,6 @@ button:active {
 
         document.getElementById('txNote').value = '';
         document.getElementById('txAmount').value = '';
-        saveData();
-    }
-
-    function handleStockTrade() {
-        let name = document.getElementById('stockName').value.trim();
-        let pnl = parseFloat(document.getElementById('stockPnl').value);
-        let accId = document.getElementById('stockAccSelect').value;
-
-        if (!accId) { alert('請先建立並選擇對應的銀行帳戶！'); return; }
-        if (!name || isNaN(pnl)) { alert('請填寫完整的股票名稱與正確的損益金額！'); return; }
-        
-        let account = appData.accounts.find(a => a.id === accId);
-        if (!account) { alert('找不到對應的帳戶！'); return; }
-
-        account.balance += pnl;
-        let now = new Date();
-        let dateStr = `${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-
-        appData.stocks.push({
-            id: Date.now().toString(),
-            name: name,
-            pnl: pnl,
-            accId: accId,
-            date: dateStr
-        });
-
-        document.getElementById('stockName').value = '';
-        document.getElementById('stockPnl').value = '';
         saveData();
     }
 
