@@ -457,7 +457,7 @@ button:active {
         <ul class="list" id="accountList"></ul>
     </div>
 
-    <!-- 💰 收支 / 本月結算 -->
+    <!-- 💰 收支 / 本月結算 / 帳戶互轉 -->
     <div class="section">
         <h3>💰 一般收支 / 存提款</h3>
         
@@ -475,14 +475,18 @@ button:active {
             <select id="accSelect">
                 <option value="">請先新增帳戶</option>
             </select>
-            <!-- 聯動：切換存提款時自動更新右邊的分類選項 -->
-            <select id="txType" onchange="updateCategoryOptions('txCategory', 'txType')">
+            <!-- 聯動：切換時自動更新右邊介面 -->
+            <select id="txType" onchange="handleTxTypeChange('txType', 'txCategory', 'accToSelect')">
                 <option value="deposit">存入 (+)</option>
                 <option value="withdraw" selected>提領 (-)</option>
+                <option value="transfer">互轉 (🔄)</option>
             </select>
         </div>
         <div class="form-row">
+            <!-- 提領/存入顯示分類 -->
             <select id="txCategory"></select>
+            <!-- 互轉時顯示轉入帳戶 -->
+            <select id="accToSelect" style="display: none;"></select>
             <input type="number" id="txAmount" placeholder="金額" min="1">
         </div>
         <div class="form-row">
@@ -596,11 +600,14 @@ button:active {
     <div class="modal-box">
         <h3>編輯收支紀錄</h3>
         <input type="hidden" id="editTxId">
-        <select id="editTxType" onchange="updateCategoryOptions('editTxCategory', 'editTxType')">
+        <select id="editTxType" onchange="handleTxTypeChange('editTxType', 'editTxCategory', 'editAccToSelect')" style="margin-bottom: 10px;">
             <option value="deposit">存入 (+)</option>
             <option value="withdraw">提領 (-)</option>
+            <option value="transfer">互轉 (🔄)</option>
         </select>
         <select id="editTxCategory" style="margin-bottom: 10px;"></select>
+        <select id="editAccToSelect" style="display: none; margin-bottom: 10px;"></select>
+        
         <input type="text" id="editTxNote" placeholder="選填備註" style="margin-bottom: 10px;">
         <input type="number" id="editTxAmount" placeholder="金額">
         <div class="modal-btns">
@@ -716,16 +723,16 @@ button:active {
         document.getElementById(modalId).style.display = 'none';
     }
 
-    // --- 收支分類邏輯 ---
+    // --- 收支分類與介面切換邏輯 ---
     const categories = {
         deposit: ['💼 薪水', '📈 投資獲利', '🧧 獎金', '💵 其他收入'],
         withdraw: ['🍜 飲食', '🚗 交通', '🛍️ 購物', '🗒️ 帳單', '💅🏻 美容', '🎉 娛樂', '🏥 醫療', '🐱 寵物', '💸 其他支出']
     };
 
-    function updateCategoryOptions(selectId = 'txCategory', typeId = 'txType', defaultVal = '') {
+    function updateCategoryOptions(selectId, typeId, defaultVal = '') {
         const type = document.getElementById(typeId).value;
         const catSelect = document.getElementById(selectId);
-        if (!catSelect) return;
+        if (!catSelect || type === 'transfer') return;
         catSelect.innerHTML = '';
         categories[type].forEach(cat => {
             let opt = document.createElement('option');
@@ -734,6 +741,22 @@ button:active {
             if (cat === defaultVal) opt.selected = true;
             catSelect.appendChild(opt);
         });
+    }
+
+    // 控制「存提款」與「互轉」的介面切換
+    function handleTxTypeChange(typeId, catId, toAccId) {
+        let type = document.getElementById(typeId).value;
+        let catEl = document.getElementById(catId);
+        let toAccEl = document.getElementById(toAccId);
+        
+        if (type === 'transfer') {
+            catEl.style.display = 'none';
+            toAccEl.style.display = 'block';
+        } else {
+            catEl.style.display = 'block';
+            toAccEl.style.display = 'none';
+            updateCategoryOptions(catId, typeId);
+        }
     }
 
     // --- 👾 開銷怪獸排行榜邏輯 ---
@@ -923,7 +946,7 @@ button:active {
         }
     }
 
-    // --- 收支紀錄 ---
+    // --- 收支紀錄與帳戶互轉 ---
     function openTxEditModal(txId) {
         let tx = appData.transactions.find(t => t.id === txId);
         if (!tx) return;
@@ -933,7 +956,13 @@ button:active {
         document.getElementById('editTxNote').value = tx.note || '';
         document.getElementById('editTxAmount').value = tx.amount;
         
-        updateCategoryOptions('editTxCategory', 'editTxType', tx.category);
+        handleTxTypeChange('editTxType', 'editTxCategory', 'editAccToSelect');
+        
+        if (tx.type === 'transfer') {
+            document.getElementById('editAccToSelect').value = tx.toAccId;
+        } else {
+            updateCategoryOptions('editTxCategory', 'editTxType', tx.category);
+        }
         
         document.getElementById('txEditModal').style.display = 'flex';
     }
@@ -941,28 +970,67 @@ button:active {
     function saveEditedTransaction() {
         let txId = document.getElementById('editTxId').value;
         let newType = document.getElementById('editTxType').value;
-        let newCategory = document.getElementById('editTxCategory').value;
-        let newNote = document.getElementById('editTxNote').value.trim();
         let newAmount = parseFloat(document.getElementById('editTxAmount').value);
+        let newNote = document.getElementById('editTxNote').value.trim();
+        
+        let newCategory = '';
+        let newToAccId = '';
+
+        if (newType === 'transfer') {
+            newToAccId = document.getElementById('editAccToSelect').value;
+        } else {
+            newCategory = document.getElementById('editTxCategory').value;
+        }
 
         if (isNaN(newAmount) || newAmount <= 0) { alert('請輸入有效金額！'); return; }
 
         let tx = appData.transactions.find(t => t.id === txId);
         if (!tx) return;
 
-        let account = appData.accounts.find(a => a.id === tx.accId);
-        if (account) {
-            if (tx.type === 'deposit') account.balance -= tx.amount;
-            else account.balance += tx.amount;
-
-            if (newType === 'deposit') account.balance += newAmount;
-            else account.balance -= newAmount;
+        // 互轉驗證
+        if (newType === 'transfer' && tx.accId === newToAccId) {
+            alert('轉出與轉入不能是同一個帳戶！'); return;
         }
 
+        // 1. 還原舊的餘額紀錄
+        if (tx.type === 'transfer') {
+            let oldFrom = appData.accounts.find(a => a.id === tx.accId);
+            let oldTo = appData.accounts.find(a => a.id === tx.toAccId);
+            if (oldFrom) oldFrom.balance += tx.amount;
+            if (oldTo) oldTo.balance -= tx.amount;
+        } else {
+            let oldAcc = appData.accounts.find(a => a.id === tx.accId);
+            if (oldAcc) {
+                if (tx.type === 'deposit') oldAcc.balance -= tx.amount;
+                else oldAcc.balance += tx.amount;
+            }
+        }
+
+        // 2. 套用新的餘額紀錄
+        if (newType === 'transfer') {
+            let newFrom = appData.accounts.find(a => a.id === tx.accId);
+            let newTo = appData.accounts.find(a => a.id === newToAccId);
+            if (newFrom) newFrom.balance -= newAmount;
+            if (newTo) newTo.balance += newAmount;
+        } else {
+            let newAcc = appData.accounts.find(a => a.id === tx.accId);
+            if (newAcc) {
+                if (newType === 'deposit') newAcc.balance += newAmount;
+                else newAcc.balance -= newAmount;
+            }
+        }
+
+        // 3. 更新交易明細資料
         tx.type = newType;
-        tx.category = newCategory;
-        tx.note = newNote;
         tx.amount = newAmount;
+        tx.note = newNote;
+        if (newType === 'transfer') {
+            tx.toAccId = newToAccId;
+            delete tx.category; // 清除一般收支的分類
+        } else {
+            tx.category = newCategory;
+            delete tx.toAccId;
+        }
 
         closeModal('txEditModal');
         saveData();
@@ -972,13 +1040,77 @@ button:active {
         let tx = appData.transactions.find(t => t.id === txId);
         if (!tx) return;
         
-        let account = appData.accounts.find(a => a.id === tx.accId);
-        if (account) {
-            if (tx.type === 'deposit') account.balance -= tx.amount;
-            else account.balance += tx.amount;
+        if (tx.type === 'transfer') {
+            let accFrom = appData.accounts.find(a => a.id === tx.accId);
+            let accTo = appData.accounts.find(a => a.id === tx.toAccId);
+            if (accFrom) accFrom.balance += tx.amount;
+            if (accTo) accTo.balance -= tx.amount;
+        } else {
+            let account = appData.accounts.find(a => a.id === tx.accId);
+            if (account) {
+                if (tx.type === 'deposit') account.balance -= tx.amount;
+                else account.balance += tx.amount;
+            }
         }
 
         appData.transactions = appData.transactions.filter(t => t.id !== txId);
+        saveData();
+    }
+
+    function handleTransaction() {
+        let type = document.getElementById('txType').value;
+        let accId = document.getElementById('accSelect').value;
+        let amount = parseFloat(document.getElementById('txAmount').value);
+        let note = document.getElementById('txNote').value.trim();
+
+        if (isNaN(amount) || amount <= 0) { alert('請輸入有效金額！'); return; }
+
+        let now = new Date();
+        let dateStr = `${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+        if (type === 'transfer') {
+            let toAccId = document.getElementById('accToSelect').value;
+            if (!accId || !toAccId) { alert('請選擇轉出與轉入帳戶！'); return; }
+            if (accId === toAccId) { alert('轉出與轉入不能是同一個帳戶！'); return; }
+            
+            let accFrom = appData.accounts.find(a => a.id === accId);
+            let accTo = appData.accounts.find(a => a.id === toAccId);
+            if (!accFrom || !accTo) return;
+
+            accFrom.balance -= amount;
+            accTo.balance += amount;
+
+            appData.transactions.push({
+                id: Date.now().toString(),
+                accId: accId,
+                toAccId: toAccId,
+                type: type,
+                note: note,
+                amount: amount,
+                date: dateStr
+            });
+        } else {
+            if (!accId) { alert('請先選擇帳戶！'); return; }
+            let category = document.getElementById('txCategory').value;
+            let account = appData.accounts.find(a => a.id === accId);
+            if (!account) return;
+
+            if (type === 'deposit') account.balance += amount;
+            else account.balance -= amount;
+
+            appData.transactions.push({
+                id: Date.now().toString(),
+                accId: accId,
+                type: type,
+                category: category,
+                note: note,
+                amount: amount,
+                date: dateStr
+            });
+        }
+
+        document.getElementById('txNote').value = '';
+        document.getElementById('txAmount').value = '';
         saveData();
     }
 
@@ -995,7 +1127,6 @@ button:active {
         let account = appData.accounts.find(a => a.id === accId);
         if (!account) { alert('找不到對應的帳戶！'); return; }
 
-        // 【核心邏輯】：只有退回的本金(cost)會加進銀行餘額
         account.balance += cost;
 
         let now = new Date();
@@ -1050,11 +1181,9 @@ button:active {
         let st = appData.stocks.find(s => s.id === stId);
         if (!st) return;
 
-        // 扣除舊的本金
         let oldAccount = appData.accounts.find(a => a.id === st.accId);
         if (oldAccount) oldAccount.balance -= (st.cost || 0);
 
-        // 加上新的本金
         let newAccount = appData.accounts.find(a => a.id === newAccId);
         if (newAccount) newAccount.balance += newCost;
 
@@ -1071,7 +1200,6 @@ button:active {
         let st = appData.stocks.find(s => s.id === stId);
         if (!st) return;
 
-        // 刪除紀錄時，把存進去的本金扣回來
         let account = appData.accounts.find(a => a.id === st.accId);
         if (account) account.balance -= (st.cost || 0);
 
@@ -1098,13 +1226,17 @@ button:active {
         document.getElementById('diffText').innerText = diff > 0 ? `還差：$${diff.toLocaleString()}` : `已達成目標！🎉`;
         document.getElementById('progressBar').style.width = `${percent}%`;
 
-        // 銀行帳戶 & 下拉選單
+        // 銀行帳戶 & 動態生成下拉選單
         const accList = document.getElementById('accountList');
         const accSelect = document.getElementById('accSelect');
+        const accToSelect = document.getElementById('accToSelect');
+        const editAccToSelect = document.getElementById('editAccToSelect');
         const stockAccSelect = document.getElementById('stockAccSelect');
         
         accList.innerHTML = '';
         accSelect.innerHTML = '';
+        accToSelect.innerHTML = '<option value="" disabled selected>➡️ 選擇轉入帳戶</option>';
+        editAccToSelect.innerHTML = '<option value="" disabled selected>➡️ 選擇轉入帳戶</option>';
         stockAccSelect.innerHTML = '';
 
         if (appData.accounts.length === 0) {
@@ -1130,6 +1262,11 @@ button:active {
                 let opt1 = document.createElement('option');
                 opt1.value = acc.id; opt1.innerText = acc.name;
                 accSelect.appendChild(opt1);
+
+                let optTo = document.createElement('option');
+                optTo.value = acc.id; optTo.innerText = acc.name;
+                accToSelect.appendChild(optTo);
+                editAccToSelect.appendChild(optTo.cloneNode(true));
 
                 let opt2 = document.createElement('option');
                 opt2.value = acc.id; opt2.innerText = acc.name;
@@ -1183,28 +1320,45 @@ button:active {
             txHistoryList.innerHTML = '<p class="empty-tip">尚無收支明細</p>';
         } else {
             appData.transactions.slice().reverse().forEach(tx => {
+                // 只有存入與提領會算進月結算，互轉被徹底排除！
                 if (tx.date.startsWith(currentMonthStr)) {
                     if (tx.type === 'deposit') monthIn += tx.amount;
-                    else monthOut += tx.amount;
+                    else if (tx.type === 'withdraw') monthOut += tx.amount;
                 }
 
                 const accObj = appData.accounts.find(a => a.id === tx.accId);
                 const accName = accObj ? accObj.name : '未知帳戶';
                 const isDeposit = tx.type === 'deposit';
+                const isTransfer = tx.type === 'transfer';
                 
-                let displayCat = tx.category ? `<span class="badge badge-cash cat-tag">${tx.category}</span>` : '';
-                let displayNote = tx.note ? tx.note : '';
-                if(!tx.category && !tx.note) displayNote = isDeposit ? '存入' : '提領';
+                let displayCat = '';
+                let displayNote = tx.note || '';
+                let subText = `${accName} | ${tx.date}`;
+                let amountHtml = '';
+
+                // 如果是帳戶互轉的視覺呈現
+                if (isTransfer) {
+                    const toAccObj = appData.accounts.find(a => a.id === tx.toAccId);
+                    const toAccName = toAccObj ? toAccObj.name : '未知帳戶';
+                    displayCat = `<span class="badge cat-tag" style="background: rgba(154, 141, 125, 0.15);">🔄 互轉</span>`;
+                    if (!tx.note) displayNote = '帳戶互轉';
+                    subText = `${accName} ➡️ ${toAccName} | ${tx.date}`;
+                    amountHtml = `<span style="color: var(--text-secondary); font-weight: 800;">$${tx.amount.toLocaleString()}</span>`;
+                } else {
+                    displayCat = tx.category ? `<span class="badge badge-cash cat-tag">${tx.category}</span>` : '';
+                    if (!tx.category && !tx.note) displayNote = isDeposit ? '存入' : '提領';
+                    amountHtml = `<span class="${isDeposit ? 'text-plus' : 'text-minus'}">${isDeposit ? '+' : '-'}$${tx.amount.toLocaleString()}</span>`;
+                }
 
                 const li = document.createElement('li');
                 li.className = 'list-item';
                 li.innerHTML = `
                     <div>
                         <div style="font-size: 14px; font-weight: 700; margin-bottom: 2px;">${displayCat}${displayNote}</div>
-                        <div class="link-text">${accName} | ${tx.date}</div>
+                        <div class="link-text">${subText}</div>
                     </div>
                     <div class="item-actions">
-                        <span class="${isDeposit ? 'text-plus' : 'text-minus'}">${isDeposit ? '+' : '-'}$${tx.amount.toLocaleString()}</span>
+                        ${amountHtml}
                         <button class="icon-btn" onclick="openTxEditModal('${tx.id}')">✏️</button>
                         <button class="icon-btn" onclick="deleteTransaction('${tx.id}')">🗑️</button>
                     </div>
@@ -1220,7 +1374,7 @@ button:active {
         balEl.innerText = `${monthBal >= 0 ? '+' : ''}$${monthBal.toLocaleString()}`;
         balEl.className = monthBal >= 0 ? 'text-plus' : 'text-minus';
 
-        // 📈 已實現股票紀錄 (包含本金歸還資訊)
+        // 📈 已實現股票紀錄
         let stockTotalPnl = appData.stocks.reduce((sum, st) => sum + st.pnl, 0);
         let totalTrades = appData.stocks.length;
         let winTrades = appData.stocks.filter(st => st.pnl > 0).length;
@@ -1261,7 +1415,7 @@ button:active {
     }
 
     // 初始化下拉選單
-    updateCategoryOptions();
+    updateCategoryOptions('txCategory', 'txType');
     renderUI();
 </script>
 
